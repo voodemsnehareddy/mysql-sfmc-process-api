@@ -1,5 +1,0 @@
-mysqlSystemRequest:
-  host: "oim-usecase-sys-api.us-e2.cloudhub.io"
-  
-sfmcSystemRequest:
-  host: "sfmc-usecase-sys-api.us-e2.cloudhub.io"

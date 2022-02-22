@@ -1,5 +1,0 @@
-mysqlSystemRequest:
-  host: "localhost"
-  
-sfmcSystemRequest:
-  host: "localhost"

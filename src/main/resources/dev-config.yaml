@@ -1,8 +1,0 @@
-mysqlSystemRequest:
-  host: "![nB+OP4qELjJAZRQV358PTG+vIxL0za4YL3RMya91usjYzb8TIOzKFQ==]"
-  client_id: "![4dxdLJQkQMx8csFpC3bryaVF3ZM8VOZDom0++B5Xn+03X8LWMa6i8A==]"
-  client_secret: "![NQjOfkzdlv50x9RiCwZdlA7uFjAjsDuJaKMqDNMIeyGDzv0I4bcwfA==]"
-sfmcSystemRequest:
-  host: "![Gm4udJ6R+trDi0tDbbL9VczWahKX9GwRgl+8VejRevsv/oO2Umh4kg==]"
-  client_id: "![//KOnhVxxnD6tUqbPaOCIPYnQ6CRqJc1xhMeV47FpPB6jr3l99wE6g==]"
-  client_secret: "![L8XzL2rIpe7Gc8S0F/vBv+hIiwA/vf4o3aE+cwGD+NRr2Py40yXiJA==]"
