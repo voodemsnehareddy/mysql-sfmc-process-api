@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow doc:id="54518105-62c8-48d7-9501-9761816204ed" name="mysql-sfmc-scheduler">
+		<http:listener doc:name="Listener" doc:id="698daab7-2e18-4100-91f1-ce8a39435476" config-ref="HTTP_Listener_config" path="/scheduler"/>
+		<logger level="INFO" doc:name="Start Logger" doc:id="4505d2f5-daa0-4f53-a783-3bd8cfd966a4" message='#[""]'/>
+		<flow-ref doc:name="Scheduler" doc:id="834478d6-d922-41fb-bb2e-36375cd9d241" name="schedulerFlow"/>
+		<logger level="INFO" doc:name="End Logger" doc:id="862d0b95-17be-45ac-a01b-56d124a8a87e" />
+	</flow>
+	<sub-flow name="setValues" doc:id="67c57ca3-10e5-4bbf-a7f1-703b772b4701" >
+		<set-variable value="#[0 as Number]" doc:name="Insert Count" doc:id="e6901223-eacb-4130-8747-a9e136cb600c" variableName="insertCount" />
+		<set-variable value="#[0 as Number]" doc:name="Update Count" doc:id="47a7d960-8283-4b8b-8ec9-83362077151b" variableName="updateCount" />
+	</sub-flow>
+	<sub-flow name="forEachSubFlow" doc:id="cccce913-e6f8-4656-92d0-deaab1389c07" >
+		<foreach doc:name="For Each" doc:id="36ff3713-8233-449c-8cd8-5657bcff9005">
+			<ee:transform doc:name="Java to Array Java" doc:id="7762b73f-1ce6-473e-abf0-922caddf1acb">
+				<ee:message>
+					<ee:set-payload><![CDATA[output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<http:request method="POST" doc:name="Post requset to upsert data in Salesforce" doc:id="2df9ca70-8e28-4f77-94da-a4c3f45c79aa" config-ref="HTTP_Request_sfmc_configuration" path="/api/sfmcAccounts">
+				<http:headers ><![CDATA[#[output application/java
+---
+{
+	"client_secret" : "${secure::sfmcSystemRequest.client_secret}",
+	"client_id" : "${secure::sfmcSystemRequest.client_id}"
+}]]]></http:headers>
+			</http:request>
+			<ee:transform doc:name="Java to json" doc:id="8c85368c-eddb-4693-bc3a-ad532bf6a6da">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			<choice doc:name="Choice" doc:id="ff668f78-57a9-4c35-a9a5-5e02394c1dc8" >
+				<when expression="#[payload.items[0].payload.created==true]">
+					<set-variable value="#[vars.insertCount as Number + 1]" doc:name="insertCount increment" doc:id="26e92da0-b2bc-487b-a1b3-d661cef42dd4" variableName="insertCount" />
+				</when>
+				<otherwise >
+					<set-variable value="#[vars.updateCount as Number + 1]" doc:name="updateCount increment" doc:id="248a0d05-bbe5-47a1-9b02-27e103df696d" variableName="updateCount"/>
+				</otherwise>
+			</choice>
+		</foreach>
+	</sub-flow>
+	<flow name="schedulerFlow" doc:id="e96b589d-dfde-4e40-8ce7-8a88958c7f00">
+		<scheduler doc:name="Scheduler" doc:id="c3337320-5276-445d-ae9d-17d99db8c692">
+			<scheduling-strategy>
+				<fixed-frequency frequency="1" timeUnit="DAYS" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Start Logger" doc:id="31f4c1dc-ec99-412a-8b45-60bc20c09829" message='#["schedulerFlow started"]' />
+		<flow-ref doc:name="Set Values" doc:id="1df23039-1ac4-475d-9650-70233363aa20" name="setValues" />
+		<try doc:name="Try" doc:id="52b360ad-2569-4005-a9a8-06496344c368" >
+			<http:request method="GET" doc:name="Requesting data from mysql" doc:id="20efcb0c-3147-4d81-94a5-6ee6ad58541a" config-ref="HTTP_Request_mysql_configuration" path="/api/accounts">
+				<http:headers ><![CDATA[#[output application/java
+---
+{
+	"client_secret" : "${secure::mysqlSystemRequest.client_secret}",
+	"client_id" : "${secure::mysqlSystemRequest.client_id}"
+}]]]></http:headers>
+			</http:request>
+			<choice doc:name="Choice" doc:id="b98d273b-7e24-4d09-80aa-56174467bae5">
+			<when expression='#[not isEmpty(payload)]'>
+					<logger level="INFO" doc:name="Mysql response Logger" doc:id="c4d92eba-695b-4ba9-b77d-a3df61dc7f99" message="#[payload]" />
+					<ee:transform doc:name="JSON to Java" doc:id="f412593a-3daf-4d58-bc18-718df43699e4">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	AccountID__c: payload01.accountID,
+    Name: payload01.name as String default "",
+    BillingStreet__c: payload01.street as String default "",
+    BillingCity__c: payload01.city as String default "",
+    BillingState__c: payload01.state as String default "",
+    BillingPostalCode__c: payload01.postal as String default "",
+    BillingCountry__c: payload01.country as String default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+					<flow-ref doc:name="For Each Sub Flow" doc:id="a054eabc-59d4-4289-aa4f-9babbd729222" name="forEachSubFlow" />
+			
+</when>
+			<otherwise>
+				<logger level="INFO" doc:name="No Record Logger" doc:id="dcff75e9-654f-445b-af8e-31ed99675cfb" message='#["No records found for upsert."]' />
+			</otherwise>
+		</choice>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="274ea310-d0bf-4086-bd10-8bbb5d9d48a2" type="HTTP:BAD_GATEWAY, HTTP:BAD_REQUEST, HTTP:CONNECTIVITY, HTTP:FORBIDDEN, HTTP:INTERNAL_SERVER_ERROR, HTTP:METHOD_NOT_ALLOWED, HTTP:RETRY_EXHAUSTED">
+					<logger level="INFO" doc:name="Error Logger" doc:id="939dc5fe-2db7-479c-ae09-df37a20f32e9" message='#["Exception occured while interacting with server.Try again later." ++ error.description default ""]'/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<set-payload value='#[output application/json --- {"Records Inserted":vars.insertCount,"Records Updated": vars.updateCount}]' doc:name="Set Response" doc:id="39c1924c-2fc4-4896-a6b6-a61963bdcecd" />
+		<logger level="INFO" doc:name="End Logger" doc:id="5b917162-6e68-4701-98c7-14b57230fe90" message='#["schedulerFlow Finished \nNumber of Inserted Records: " ++ vars.insertCount ++ "\nNumber of Updated Records: " ++ vars.updateCount]' />
+</flow>
+</mule>
