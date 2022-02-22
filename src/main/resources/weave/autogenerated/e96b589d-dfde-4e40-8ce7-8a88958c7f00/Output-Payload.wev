@@ -1,0 +1,7 @@
+%dw 2.0
+
+type auto_e96b589d_dfde_4e40_8ce7_8a88958c7f00_Output_Payload = {|
+  "Records Inserted": Number, 
+  "Records Updated": Number
+|}
+
